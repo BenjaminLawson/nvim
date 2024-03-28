@@ -46,7 +46,7 @@ if !has('gui_running')
     hi Directive    cterm=NONE          ctermbg=NONE    ctermfg=NONE
     hi Conditional  cterm=bold          ctermbg=NONE    ctermfg=NONE
     hi Comment      cterm=italic        ctermbg=NONE    ctermfg=243
-    hi Func         cterm=bold          ctermbg=NONE    ctermfg=235
+    hi Function         cterm=bold          ctermbg=NONE    ctermfg=235
     hi Identifier   cterm=NONE          ctermbg=NONE    ctermfg=NONE
     hi Statement    cterm=NONE          ctermbg=NONE    ctermfg=NONE
     hi Ignore       cterm=bold                          ctermfg=NONE
@@ -56,8 +56,16 @@ if !has('gui_running')
     hi Todo         cterm=bold,standout ctermbg=0       ctermfg=11
     hi MatchParen   cterm=bold          ctermbg=250     ctermfg=NONE
     hi ColorColumn                                      ctermbg=255
-    hi @function.call cterm=bold
+    hi @function.call cterm=bold ctermfg=235
     hi @attribute cterm=italic
+    hi @string cterm=italic ctermfg=243
+    hi @function.macro.rust cterm=bold ctermfg=235
+    hi @keyword.coroutine.rust cterm=underline ctermfg=235
+    hi @function.rust cterm=bold ctermfg=235
+    hi DiagnosticError cterm=underline ctermfg=235
+    hi DiagnosticWarn cterm=underline ctermfg=243
+    hi DiagnosticSignError cterm=None ctermfg=235
+    hi DiagnosticSignWarn cterm=None ctermfg=243
   else
     hi Normal       cterm=NONE          ctermbg=234     ctermfg=250
     hi SpecialKey   cterm=bold                          ctermfg=NONE

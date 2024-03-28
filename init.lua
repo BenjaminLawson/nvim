@@ -179,14 +179,15 @@ vim.cmd [[autocmd BufWritePre * lua vim.lsp.buf.format()]]
 
 -- Global mappings.
 -- See `:help vim.diagnostic.*` for documentation on any of the below functions
-vim.keymap.set('n', '<space>e', vim.diagnostic.open_float)
+vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float)
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev)
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next)
-vim.keymap.set('n', '<space>q', vim.diagnostic.setloclist)
+vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist)
 
 -- Buffer local mappings.
 -- See `:help vim.lsp.*` for documentation on any of the below functions
 local opts = {}
+vim.keymap.set('n', '<leader>fs', builtin.lsp_document_symbols, opts)
 vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
 vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
 vim.keymap.set('n', 'gh', vim.lsp.buf.hover, opts)
@@ -210,3 +211,6 @@ vim.filetype.add({ extension = { fidl = "fidl" } })
 
 -- Don't wrap lines
 vim.wo.wrap = false
+
+vim.cmd [[set notermguicolors]]
+vim.cmd [[set bg=light]]
