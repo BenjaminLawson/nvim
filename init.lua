@@ -15,6 +15,7 @@ Plug('hrsh7th/cmp-vsnip')
 Plug('hrsh7th/vim-vsnip')
 Plug('stevearc/overseer.nvim', {['commit'] = 'b72f6d23ce47ccd427be2341f389c63448278f17'})
 Plug('nvim-telescope/telescope-file-browser.nvim', {['commit'] = '8839e3f8070dfafa5b0c0e4652700298e7b872c4'})
+Plug('nvim-telescope/telescope-live-grep-args.nvim', {['commit'] = '731a046da7dd3adff9de871a42f9b7fb85f60f47'})
 Plug('https://gn.googlesource.com/gn', {['rtp'] = 'misc/vim'})
 Plug('airblade/vim-gitgutter', {['commit'] = '67ef116100b40f9ca128196504a2e0bc0a2753b0'})
 Plug('tpope/vim-fugitive', {['commit'] = '8d4e8d45385c63a0bf735fe1164772116bf0da0d'})
@@ -39,6 +40,9 @@ vim.cmd [[colorscheme eink]]
 -- Enable line numbers
 vim.wo.number = true
 
+-- Don't wrap lines
+vim.wo.wrap = false
+
 -- Terminal
 vim.keymap.set('t', '<C-space>', '<C-\\><C-n>', {}) -- exit terminal mode
 
@@ -51,16 +55,38 @@ vim.keymap.set('n', '<leader>wl', '<C-w>l', {})
 local builtin = require('telescope.builtin')
 vim.keymap.set('n', '<leader><leader>', builtin.find_files, {})
 vim.keymap.set('n', '<leader>ff', builtin.find_files, {})
+vim.keymap.set('n', '<leader>fs', builtin.lsp_document_symbols, {})
 vim.keymap.set('n', '<leader>fg', builtin.live_grep, {})
 vim.keymap.set('n', '<leader>fb', function() builtin.buffers({sort_mru = true}) end, {})
 vim.keymap.set('n', '<leader>bb', function() builtin.buffers({sort_mru = true}) end, {})
 vim.keymap.set('n', '<leader>fh', builtin.help_tags, {})
-vim.keymap.set('n', '<leader>f.', ':Telescope file_browser path=%:p:h select_buffer=true<CR>', {})
-vim.keymap.set('n', '<leader>.', ':Telescope file_browser path=%:p:h select_buffer=true<CR>', {})
+vim.keymap.set('n', '<leader>f.', ':Telescope file_browser path=%:p:h select_buffer=true hidden=true<CR>', {})
+vim.keymap.set('n', '<leader>.', ':Telescope file_browser path=%:p:h select_buffer=true hidden=true<CR>', {})
 vim.keymap.set('n', '<leader>sb', ':Telescope current_buffer_fuzzy_find<CR>', {})
 vim.keymap.set('n', '<leader>ss', ':Telescope current_buffer_fuzzy_find<CR>', {})
 vim.keymap.set('n', '<leader>fbd', function() builtin.find_files({ cwd = require('telescope.utils').buffer_dir() }) end, {})
-require('telescope').load_extension('file_browser')
+local telescope = require('telescope')
+local actions = require('telescope.actions')
+telescope.load_extension('file_browser')
+telescope.load_extension('live_grep_args')
+vim.keymap.set('n', '<leader>fgg', function() telescope.extensions.live_grep_args.live_grep_args() end, {})
+telescope.setup {
+	pickers = {
+		find_files = {
+			hidden = true
+		}
+	},
+        extensions = {
+          live_grep_args = {
+            mappings = {
+              i = {
+                ['<C-n>'] = actions.cycle_history_next,
+                ['<C-p>'] = actions.cycle_history_prev,
+              },
+            },
+          },
+        },
+}
 
 -- Treesitter
 require'nvim-treesitter.configs'.setup {
@@ -157,6 +183,7 @@ lspconfig.pyright.setup {
 lspconfig.clangd.setup {
   capabilities = capabilities
 }
+local is_fuchsia = string.find(vim.loop.cwd() or "", "/fuchsia")
 lspconfig.rust_analyzer.setup {
   capabilities = capabilities,
   -- Server-specific settings. See `:help lspconfig-setup`
@@ -166,6 +193,10 @@ lspconfig.rust_analyzer.setup {
  		remapPrefix = {
 			["../../"] = "~/fuchsia",
 		}
+	},
+	check = {
+        	-- overrideCommand = { "fx", "clippy", "--all", "--raw"}
+        	-- overrideCommand = { "fx", "clippy", "--all", "-f", "$saved_file"}
 	}
     },
   },
@@ -174,8 +205,6 @@ lspconfig.starlark_rust.setup{
   capabilities = capabilities,
 }
 
--- LSP format on save
-vim.cmd [[autocmd BufWritePre * lua vim.lsp.buf.format()]]
 
 -- Global mappings.
 -- See `:help vim.diagnostic.*` for documentation on any of the below functions
@@ -193,11 +222,6 @@ vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
 vim.keymap.set('n', 'gh', vim.lsp.buf.hover, opts)
 vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)
 vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, opts)
--- vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, opts)
--- vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, opts)
--- vim.keymap.set('n', '<space>wl', function()
---   print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
--- end, opts)
 vim.keymap.set('n', '<space>D', vim.lsp.buf.type_definition, opts)
 vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, opts)
 vim.keymap.set({ 'n', 'v' }, '<space>ca', vim.lsp.buf.code_action, opts)
@@ -206,11 +230,20 @@ vim.keymap.set('n', '<space>f', function()
   vim.lsp.buf.format { async = true }
 end, opts)
 
+
+-- LSP format on save
+vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+  callback = function()
+    vim.lsp.buf.format()
+  end,
+})
+
+-- misc keymaps
+vim.keymap.set('n', '<leader>bp', '<C-^>', opts)
+
 -- FIDL
 vim.filetype.add({ extension = { fidl = "fidl" } })
 
--- Don't wrap lines
-vim.wo.wrap = false
 
 vim.cmd [[set notermguicolors]]
 vim.cmd [[set bg=light]]
