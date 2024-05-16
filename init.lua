@@ -82,7 +82,24 @@ require("lazy").setup({
 				function() require("telescope").extensions.live_grep_args.live_grep_args() end, {})
 		end
 	},
-	{ "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
+	{
+		"nvim-treesitter/nvim-treesitter",
+		build = ":TSUpdate",
+		config = function()
+			local configs = require("nvim-treesitter.configs")
+			configs.setup({
+				ensure_installed = { "fidl", "cpp", "rust", "markdown", "lua" },
+				highlight = {
+					enable = true,
+					-- Setting this to true will run `:h syntax` and tree-sitter at the same time.
+					-- Set this to `true` if you depend on 'syntax' being enabled (like for indentation).
+					-- Using this option may slow down your editor, and you may see some duplicate highlights.
+					-- Instead of true it can also be a list of languages
+					additional_vim_regex_highlighting = false,
+				},
+			})
+		end
+	},
 	{
 		'hrsh7th/nvim-cmp',
 		dependencies = {
@@ -118,17 +135,8 @@ require("lazy").setup({
 					['<C-f>'] = cmp.mapping.scroll_docs(4),
 					['<C-Space>'] = cmp.mapping.complete(),
 					['<C-e>'] = cmp.mapping.abort(),
-					["<CR>"] = cmp.mapping({
-						i = function(fallback)
-							if cmp.visible() and cmp.get_active_entry() then
-								cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = false })
-							else
-								fallback()
-							end
-						end,
-						s = cmp.mapping.confirm({ select = true }),
-						c = cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = true }),
-					}),
+					["<C-y>"] = cmp.mapping.confirm({ select = true }),
+					["<CR>"] = cmp.config.disable,
 				}),
 				sources = cmp.config.sources({
 					{ name = 'nvim_lsp' },
@@ -169,7 +177,98 @@ require("lazy").setup({
 		end
 	},
 	'nvim-lua/plenary.nvim',
-	'neovim/nvim-lspconfig',
+	{
+		'neovim/nvim-lspconfig',
+		dependencies = {
+			'hrsh7th/cmp-nvim-lsp',
+		},
+		config = function()
+			-- Capabilities for lspconfig.
+			-- Use default vim.lsp capabilities and apply some tweaks on capabilities.completion for nvim-cmp
+			local capabilities = vim.tbl_deep_extend("force",
+				vim.lsp.protocol.make_client_capabilities(),
+				require('cmp_nvim_lsp').default_capabilities()
+			)
+			-- Large workspace scanning may freeze the UI; see https://github.com/neovim/neovim/issues/23291
+			capabilities.workspace.didChangeWatchedFiles.dynamicRegistration = false
+
+			-- Setup language servers.
+			local lspconfig = require('lspconfig')
+			lspconfig.pyright.setup {
+				capabilities = capabilities
+			}
+			lspconfig.clangd.setup {
+				capabilities = capabilities
+			}
+			-- local is_fuchsia = string.find(vim.loop.cwd() or "", "/fuchsia")
+			lspconfig.rust_analyzer.setup {
+				capabilities = capabilities,
+				-- Server-specific settings. See `:help lspconfig-setup`
+				settings = {
+					['rust-analyzer'] = {
+						diagnostics = {
+							enable = true,
+							remapPrefix = {
+								["../../"] = "~/fuchsia",
+							},
+							experimental = {
+								enable = true,
+							}
+						},
+						check = {
+							-- overrideCommand = { "fx", "clippy", "--all", "--raw"}
+							-- overrideCommand = { "fx", "clippy", "--all", "-f", "$saved_file"}
+						}
+					},
+				},
+			}
+			lspconfig.starlark_rust.setup {
+				capabilities = capabilities,
+			}
+			lspconfig.lua_ls.setup {
+				on_init = function(client)
+					local path = client.workspace_folders[1].name
+					if vim.loop.fs_stat(path .. '/.luarc.json') or vim.loop.fs_stat(path .. '/.luarc.jsonc') then
+						return
+					end
+
+					client.config.settings.Lua = vim.tbl_deep_extend('force',
+						client.config.settings.Lua, {
+							runtime = {
+								-- Tell the language server which version of Lua you're using
+								-- (most likely LuaJIT in the case of Neovim)
+								version = 'LuaJIT'
+							},
+							-- Make the server aware of Neovim runtime files
+							workspace = {
+								checkThirdParty = false,
+								-- library = {
+								--	vim.env.VIMRUNTIME
+								--	-- Depending on the usage, you might want to add additional paths here.
+								--	-- "${3rd}/luv/library"
+								--	-- "${3rd}/busted/library",
+								-- }
+								-- or pull in all of 'runtimepath'. NOTE: this is a lot slower
+								library = vim.api.nvim_get_runtime_file("", true)
+							}
+						})
+				end,
+				settings = {
+					Lua = {
+						format = {
+							enable = true,
+							-- Put format options here
+							-- NOTE: the value should be STRING!!
+							defaultConfig = {
+								indent_style = "space",
+								indent_size = "2",
+							}
+						},
+					}
+				}
+			}
+		end
+	},
 	{
 		'stevearc/overseer.nvim',
 		config = function()
@@ -216,85 +315,6 @@ require 'nvim-treesitter.configs'.setup {
 }
 
 
--- Capabilities for lspconfig.
--- Use default vim.lsp capabilities and apply some tweaks on capabilities.completion for nvim-cmp
-local capabilities = vim.tbl_deep_extend("force",
-	vim.lsp.protocol.make_client_capabilities(),
-	require('cmp_nvim_lsp').default_capabilities()
-)
--- Large workspace scanning may freeze the UI; see https://github.com/neovim/neovim/issues/23291
-capabilities.workspace.didChangeWatchedFiles.dynamicRegistration = false
-
--- Setup language servers.
-local lspconfig = require('lspconfig')
-lspconfig.pyright.setup {
-	capabilities = capabilities
-}
-lspconfig.clangd.setup {
-	capabilities = capabilities
-}
--- local is_fuchsia = string.find(vim.loop.cwd() or "", "/fuchsia")
-lspconfig.rust_analyzer.setup {
-	capabilities = capabilities,
-	-- Server-specific settings. See `:help lspconfig-setup`
-	settings = {
-		['rust-analyzer'] = {
-			diagnostics = {
-				remapPrefix = {
-					["../../"] = "~/fuchsia",
-				}
-			},
-			check = {
-				-- overrideCommand = { "fx", "clippy", "--all", "--raw"}
-				-- overrideCommand = { "fx", "clippy", "--all", "-f", "$saved_file"}
-			}
-		},
-	},
-}
-lspconfig.starlark_rust.setup {
-	capabilities = capabilities,
-}
-lspconfig.lua_ls.setup {
-	on_init = function(client)
-		local path = client.workspace_folders[1].name
-		if vim.loop.fs_stat(path .. '/.luarc.json') or vim.loop.fs_stat(path .. '/.luarc.jsonc') then
-			return
-		end
-
-		client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {
-			runtime = {
-				-- Tell the language server which version of Lua you're using
-				-- (most likely LuaJIT in the case of Neovim)
-				version = 'LuaJIT'
-			},
-			-- Make the server aware of Neovim runtime files
-			workspace = {
-				checkThirdParty = false,
-				-- library = {
-				--	vim.env.VIMRUNTIME
-				--	-- Depending on the usage, you might want to add additional paths here.
-				--	-- "${3rd}/luv/library"
-				--	-- "${3rd}/busted/library",
-				-- }
-				-- or pull in all of 'runtimepath'. NOTE: this is a lot slower
-				library = vim.api.nvim_get_runtime_file("", true)
-			}
-		})
-	end,
-	settings = {
-		Lua = {
-			format = {
-				enable = true,
-				-- Put format options here
-				-- NOTE: the value should be STRING!!
-				defaultConfig = {
-					indent_style = "space",
-					indent_size = "2",
-				}
-			},
-		}
-	}
-}
 
 
 -- Global mappings.
