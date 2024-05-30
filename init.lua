@@ -198,7 +198,11 @@ require("lazy").setup({
 				capabilities = capabilities
 			}
 			lspconfig.clangd.setup {
-				capabilities = capabilities
+				capabilities = capabilities,
+				cmd = {
+					"clangd",
+					"-header-insertion=never",
+				}
 			}
 			-- local is_fuchsia = string.find(vim.loop.cwd() or "", "/fuchsia")
 			lspconfig.rust_analyzer.setup {
@@ -276,6 +280,18 @@ require("lazy").setup({
 			vim.keymap.set('n', '<leader>pt', function() vim.cmd('OverseerRun') end, {})
 		end
 	},
+	{
+		'stevearc/oil.nvim',
+		opts = {},
+		config = function()
+			require("oil").setup({
+				view_options = {
+					show_hidden = true,
+				}
+			})
+			vim.keymap.set("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
+		end
+	},
 	'airblade/vim-gitgutter',
 	'tpope/vim-fugitive',
 	'raimondi/delimitmate',
@@ -327,15 +343,15 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist)
 -- Buffer local mappings.
 -- See `:help vim.lsp.*` for documentation on any of the below functions
 local opts = {}
-vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
 vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
-vim.keymap.set('n', 'gh', vim.lsp.buf.hover, opts)
+vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
 vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)
-vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, opts)
+vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
+vim.keymap.set('n', 'gh', vim.lsp.buf.hover, opts)
+vim.keymap.set('n', 'gk', vim.lsp.buf.signature_help, opts)
 vim.keymap.set('n', '<leader>D', vim.lsp.buf.type_definition, opts)
 vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
 vim.keymap.set({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, opts)
-vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
 vim.keymap.set('n', '<leader>bf', function()
 	vim.lsp.buf.format { async = true }
 end, opts)
