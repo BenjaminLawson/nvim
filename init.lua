@@ -178,9 +178,24 @@ require("lazy").setup({
 	},
 	'nvim-lua/plenary.nvim',
 	{
+		'williamboman/mason.nvim',
+		config = true,
+	},
+	{
 		'neovim/nvim-lspconfig',
 		dependencies = {
 			'hrsh7th/cmp-nvim-lsp',
+			{
+				'williamboman/mason-lspconfig.nvim',
+				opts = {
+					-- TODO: pyright requires npm
+					ensure_installed = { "lua_ls", "rust_analyzer", "clangd", "starlark_rust" },
+				},
+				dependencies = {
+					'williamboman/mason.nvim',
+				}
+
+			}
 		},
 		config = function()
 			-- Capabilities for lspconfig.
