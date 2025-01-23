@@ -13,6 +13,7 @@ let colors_name = "eink"
 if !has('gui_running')
   if &background == "light"
     hi Normal       cterm=NONE          ctermbg=NONE    ctermfg=235
+    hi Directory       cterm=bold          ctermbg=NONE    ctermfg=235
     hi Pmenu        cterm=None          ctermbg=None
     hi PmenuSel     cterm=bold          ctermbg=None
     hi SpecialKey   cterm=bold                          ctermfg=NONE

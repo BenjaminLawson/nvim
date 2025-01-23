@@ -3,6 +3,7 @@ vim.keymap.set("n", " ", "<Nop>", { silent = true, remap = false })
 vim.g.mapleader = " "
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+---@diagnostic disable-next-line: undefined-field
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
 	vim.fn.system({
 		"git",
@@ -24,6 +25,10 @@ require("lazy").setup({
 			local telescope = require('telescope')
 			local actions = require('telescope.actions')
 			telescope.setup {
+				defaults = {
+					layout_strategy = "horizontal",
+					layout_config = { width = 0.95 },
+				},
 				pickers = {
 					find_files = {
 						hidden = true
@@ -87,6 +92,8 @@ require("lazy").setup({
 		build = ":TSUpdate",
 		config = function()
 			local configs = require("nvim-treesitter.configs")
+
+			---@diagnostic disable-next-line: missing-fields
 			configs.setup({
 				ensure_installed = { "fidl", "cpp", "rust", "markdown", "lua" },
 				highlight = {
@@ -179,7 +186,9 @@ require("lazy").setup({
 	'nvim-lua/plenary.nvim',
 	{
 		'williamboman/mason.nvim',
-		config = true,
+		opts = {
+			PATH = "prepend", -- prepend | append | skip
+		}
 	},
 	{
 		'neovim/nvim-lspconfig',
@@ -189,7 +198,7 @@ require("lazy").setup({
 				'williamboman/mason-lspconfig.nvim',
 				opts = {
 					-- TODO: pyright requires npm
-					ensure_installed = { "lua_ls", "rust_analyzer", "clangd", "starlark_rust" },
+					ensure_installed = { "lua_ls", "rust_analyzer@2024-05-06", "clangd", "starlark_rust", "esbonio" },
 				},
 				dependencies = {
 					'williamboman/mason.nvim',
@@ -209,18 +218,45 @@ require("lazy").setup({
 
 			-- Setup language servers.
 			local lspconfig = require('lspconfig')
+			lspconfig.esbonio.setup {
+				capabilities = capabilities
+			}
 			lspconfig.pyright.setup {
 				capabilities = capabilities
 			}
-			lspconfig.clangd.setup {
-				capabilities = capabilities,
-				cmd = {
-					"clangd",
-					"-header-insertion=never",
+			---@diagnostic disable-next-line: undefined-field
+			-- TODO: Make config file: https://clangd.llvm.org/config.html
+			local is_pigweed = string.find(vim.loop.cwd() or "", "/pigweed")
+			if is_pigweed then
+				lspconfig.clangd.setup {
+					capabilities = capabilities,
+					cmd = {
+						--"clangd",
+						"/usr/local/google/home/benlawson/pigweed/.environment/cipd/packages/pigweed/bin/clangd",
+						"-header-insertion=never",
+						-- GN
+						"--compile-commands-dir=/usr/local/google/home/benlawson/pigweed/.pw_ide/.stable",
+						-- Bazel
+						-- "--compile-commands-dir=/usr/local/google/home/benlawson/pigweed/.compile_commands/fuchsia",
+						"--query-driver=/usr/local/google/home/benlawson/pigweed/.environment/cipd/packages/pigweed/bin/*,/usr/local/google/home/benlawson/pigweed/.environment/cipd/packages/arm/bin/*",
+						"--background-index",
+						"--clang-tidy",
+					}
 				}
-			}
+			else
+				lspconfig.clangd.setup {
+					capabilities = capabilities,
+					cmd = {
+						"clangd",
+						"-header-insertion=never",
+					}
+				}
+			end
 			-- local is_fuchsia = string.find(vim.loop.cwd() or "", "/fuchsia")
 			lspconfig.rust_analyzer.setup {
+				cmd = {
+					"/usr/local/google/home/benlawson/fuchsia/prebuilt/third_party/rust-analyzer/rust-analyzer",
+				},
 				capabilities = capabilities,
 				-- Server-specific settings. See `:help lspconfig-setup`
 				settings = {
@@ -236,7 +272,10 @@ require("lazy").setup({
 						},
 						check = {
 							-- overrideCommand = { "fx", "clippy", "--all", "--raw"}
-							-- overrideCommand = { "fx", "clippy", "--all", "-f", "$saved_file"}
+							overrideCommand = { "fx", "clippy", "-f", "$saved_file", "--raw" }
+						},
+						cachePriming = {
+							enable = false,
 						}
 					},
 				},
@@ -247,6 +286,7 @@ require("lazy").setup({
 			lspconfig.lua_ls.setup {
 				on_init = function(client)
 					local path = client.workspace_folders[1].name
+					---@diagnostic disable-next-line: undefined-field
 					if vim.loop.fs_stat(path .. '/.luarc.json') or vim.loop.fs_stat(path .. '/.luarc.jsonc') then
 						return
 					end
@@ -300,6 +340,7 @@ require("lazy").setup({
 		opts = {},
 		config = function()
 			require("oil").setup({
+				skip_confirm_for_simple_edits = true,
 				view_options = {
 					show_hidden = true,
 				}
@@ -333,21 +374,6 @@ vim.keymap.set('n', '<leader>wj', '<C-w>j', {})
 vim.keymap.set('n', '<leader>wk', '<C-w>k', {})
 vim.keymap.set('n', '<leader>wl', '<C-w>l', {})
 
--- Treesitter
-require 'nvim-treesitter.configs'.setup {
-	highlight = {
-		enable = true,
-		-- Setting this to true will run `:h syntax` and tree-sitter at the same time.
-		-- Set this to `true` if you depend on 'syntax' being enabled (like for indentation).
-		-- Using this option may slow down your editor, and you may see some duplicate highlights.
-		-- Instead of true it can also be a list of languages
-		additional_vim_regex_highlighting = false,
-	},
-}
-
-
-
-
 -- Global mappings.
 -- See `:help vim.diagnostic.*` for documentation on any of the below functions
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float)
@@ -357,19 +383,19 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist)
 
 -- Buffer local mappings.
 -- See `:help vim.lsp.*` for documentation on any of the below functions
-local opts = {}
-vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
-vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
-vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)
-vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
-vim.keymap.set('n', 'gh', vim.lsp.buf.hover, opts)
-vim.keymap.set('n', 'gk', vim.lsp.buf.signature_help, opts)
-vim.keymap.set('n', '<leader>D', vim.lsp.buf.type_definition, opts)
-vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
-vim.keymap.set({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, opts)
+vim.keymap.set('n', 'gd', vim.lsp.buf.definition, {})
+vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, {})
+vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, {})
+vim.keymap.set('n', 'gr', vim.lsp.buf.references, {})
+vim.keymap.set('n', 'gh', vim.lsp.buf.hover, {})
+vim.keymap.set('n', 'gk', vim.lsp.buf.signature_help, {})
+vim.keymap.set('n', '<leader>D', vim.lsp.buf.type_definition, {})
+vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, {})
+vim.keymap.set('n', '<leader>o', function() vim.cmd('ClangdSwitchSourceHeader') end, {})
+vim.keymap.set({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, {})
 vim.keymap.set('n', '<leader>bf', function()
 	vim.lsp.buf.format { async = true }
-end, opts)
+end, {})
 
 
 -- LSP format on save
@@ -380,7 +406,7 @@ vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 })
 
 -- misc keymaps
-vim.keymap.set('n', '<leader>bp', '<C-^>', opts)
+vim.keymap.set('n', '<leader>bp', '<C-^>', {})
 
 -- FIDL
 vim.filetype.add({ extension = { fidl = "fidl" } })
@@ -388,5 +414,19 @@ vim.filetype.add({ extension = { fidl = "fidl" } })
 -- highlight trailing whitespace
 vim.opt.listchars = { eol = '↵', trail = '~', tab = '>-', nbsp = '␣' }
 
+-- Copy to system clipboard: "+y
+vim.g.clipboard = {
+	name = 'OSC 52',
+	copy = {
+		['+'] = require('vim.ui.clipboard.osc52').copy('+'),
+		['*'] = require('vim.ui.clipboard.osc52').copy('*'),
+	},
+	paste = {
+		['+'] = require('vim.ui.clipboard.osc52').paste('+'),
+		['*'] = require('vim.ui.clipboard.osc52').paste('*'),
+	},
+}
+
 vim.cmd [[set notermguicolors]]
 vim.cmd [[set bg=light]]
+vim.cmd [[let g:terminal_color_11 = 'black']]
