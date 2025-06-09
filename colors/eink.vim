@@ -32,10 +32,10 @@ if !has('gui_running')
     hi WildMenu     cterm=standout                      ctermfg=NONE
     hi Folded       cterm=standout                      ctermfg=NONE
     hi FoldColumn   cterm=standout                      ctermfg=NONE
-    hi DiffAdd      cterm=bold                          ctermfg=NONE
-    hi DiffChange   cterm=bold                          ctermfg=NONE
-    hi DiffDelete   cterm=bold                          ctermfg=NONE
-    hi DiffText     cterm=reverse                       ctermfg=NONE
+    hi DiffAdd cterm=NONE ctermbg=253 ctermfg=235
+    hi DiffDelete cterm=NONE ctermbg=252
+    hi DiffChange cterm=NONE ctermbg=252
+    hi DiffText cterm=NONE ctermbg=251 ctermfg=235
     hi Type         cterm=None          ctermbg=NONE    ctermfg=NONE
     hi Keyword      cterm=None          ctermbg=NONE    ctermfg=NONE
     hi Number       cterm=bold          ctermbg=NONE    ctermfg=NONE
